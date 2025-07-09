@@ -1,37 +1,32 @@
-import express from 'express';
-import helmet from 'helmet';
-import cookieParser from 'cookie-parser';
+import Fastify from 'fastify';
+import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
+import fastifyMongo from '@fastify/mongodb';
 import {
-  generalLimiter,
-  bodyParserMiddleware,
-  corsMiddleware,
-  requestLogger,
-  notFoundHandler,
-  errorHandler,
-  sanitizeInput,
-  xssProtection,
-} from './middlewares/index';
+  corsPlugin,
+  rateLimiterPlugin,
+  loggingPlugin,
+  errorHandlerPlugin,
+  sanitizerPlugin,
+} from './middlewares';
 import routes from './routes/index';
 
-const app = express();
+const app = Fastify({ logger: false });
 
-// Core Middlewares
-app.use(helmet());
-app.use(corsMiddleware);
-app.use(generalLimiter);
-app.use(bodyParserMiddleware);
-app.use(cookieParser());
-app.use(requestLogger);
+// Register plugins
+app.register(fastifyMongo, {
+  forceClose: true,
+  url: 'mongodb://localhost:27017/fastify_db', // Change DB name as needed
+});
+app.register(helmet);
+app.register(multipart);
+app.register(loggingPlugin);
+app.register(corsPlugin);
+app.register(rateLimiterPlugin);
+app.register(sanitizerPlugin);
+app.register(errorHandlerPlugin);
 
-// Security Middlewares
-app.use(xssProtection);
-app.use(sanitizeInput);
-
-// API Routes
-app.use('/api', routes);
-
-// Error Handling
-app.use(notFoundHandler);
-app.use(errorHandler);
+// Register routes
+app.register(routes, { prefix: '/api' });
 
 export default app;

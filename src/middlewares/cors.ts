@@ -1,4 +1,5 @@
-import cors from 'cors';
+import fp from 'fastify-plugin';
+import cors from '@fastify/cors';
 
 const corsOptions = {
   origin:
@@ -14,4 +15,6 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
 
-export const corsMiddleware = cors(corsOptions);
+export default fp(async (fastify) => {
+  await fastify.register(cors, corsOptions);
+});

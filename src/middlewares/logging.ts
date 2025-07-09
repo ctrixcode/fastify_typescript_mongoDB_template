@@ -1,7 +1,11 @@
+import fp from 'fastify-plugin';
 import { logger } from '../utils';
 
-export const requestLogger = (req: any, _: any, next: any) => {
-  const clientIP = req.ip === '::1' ? 'localhost' : req.ip;
-  logger.http(`${req.method} ${req.url} - ${clientIP}`);
-  next();
-};
+const loggingPlugin = fp(async (fastify) => {
+  fastify.addHook('onRequest', async (request) => {
+    const clientIP = request.ip === '::1' ? 'localhost' : request.ip;
+    logger.http(`${request.method} ${request.url} - ${clientIP}`);
+  });
+});
+
+export default loggingPlugin;
