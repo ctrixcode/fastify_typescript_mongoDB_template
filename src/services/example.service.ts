@@ -1,6 +1,6 @@
 import { IExample } from '../models/Example';
 import { logger } from '../utils';
-import { Collection, ObjectId, Db } from 'mongodb';
+import { ObjectId, Db } from 'mongodb';
 
 export interface CreateExampleData {
   name: string;
