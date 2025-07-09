@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { MongoClient, ObjectId } from 'mongodb';
 
-const mongoPlugin: FastifyPluginAsync = async (fastify, _opts) => {
+const mongoDBPlugin: FastifyPluginAsync = async (fastify, _opts) => {
   const uri = process.env.MONGO_URL || 'mongodb://localhost:27017/fastify_db';
   const client = new MongoClient(uri);
   await client.connect();
@@ -16,4 +16,4 @@ const mongoPlugin: FastifyPluginAsync = async (fastify, _opts) => {
 };
 
 // export { mongoPlugin };
-export default mongoPlugin;
+export default mongoDBPlugin;

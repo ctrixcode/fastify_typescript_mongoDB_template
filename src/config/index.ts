@@ -1,1 +1,1 @@
-export { default as dbInstance } from './db';
+export { default as mongoDBPlugin } from './db';

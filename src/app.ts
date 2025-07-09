@@ -9,7 +9,7 @@ import {
   errorHandlerPlugin,
   sanitizerPlugin,
 } from './middlewares';
-import mongoPlugin from './config/db';
+import { mongoDBPlugin } from './config';
 import routes from './routes/index';
 
 dotenv.config();
@@ -17,7 +17,7 @@ dotenv.config();
 const app = Fastify({ logger: false });
 
 // Register plugins
-app.register(mongoPlugin);
+app.register(mongoDBPlugin);
 app.register(helmet);
 app.register(multipart);
 app.register(loggingPlugin);
