@@ -1,5 +1,6 @@
-import Example, { IExample } from '../models/Example';
+import { IExample } from '../models/Example';
 import { logger } from '../utils';
+import { Collection, ObjectId, Db } from 'mongodb';
 
 export interface CreateExampleData {
   name: string;
@@ -30,22 +31,28 @@ export interface ExampleFilter {
   isDeleted?: boolean;
 }
 
+function toIExample(doc: any): IExample {
+  // Map MongoDB _id to id if needed, and ensure all fields exist
+  return {
+    ...doc,
+    // Optionally: id: doc._id?.toString(),
+  };
+}
+
 /**
  * Create a new example item
  */
 export const createExample = async (
-  exampleData: CreateExampleData
+  exampleData: CreateExampleData,
+  db: Db
 ): Promise<IExample> => {
   try {
     logger.info('Creating new example item', { name: exampleData.name });
-
-    const example = new Example(exampleData);
-    const savedExample = await example.save();
-
-    logger.info('Example item created successfully', {
-      exampleId: savedExample._id,
-    });
-    return savedExample;
+    const collection = db.collection('examples');
+    const result = await collection.insertOne(exampleData);
+    const savedExample = await collection.findOne({ _id: result.insertedId });
+    if (!savedExample) throw new Error('Failed to fetch inserted example');
+    return toIExample(savedExample);
   } catch (error) {
     logger.error('Error creating example item:', error);
     throw error;
@@ -56,24 +63,28 @@ export const createExample = async (
  * Get all example items with pagination and filtering
  */
 export const getExamples = async (
+  db: Db,
   page: number = 1,
   limit: number = 10,
   category?: string,
   isDeleted?: boolean
 ): Promise<{ examples: IExample[]; total: number }> => {
   try {
+    const collection = db.collection('examples');
     const skip = (page - 1) * limit;
-
-    // Build filter object with proper typing
     const filter: ExampleFilter = {};
     if (category) filter['metadata.category'] = category;
     if (isDeleted !== undefined) filter.isDeleted = isDeleted;
-
-    const [examples, total] = await Promise.all([
-      Example.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 }),
-      Example.countDocuments(filter),
+    const [docs, total] = await Promise.all([
+      collection
+        .find(filter)
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 })
+        .toArray(),
+      collection.countDocuments(filter),
     ]);
-
+    const examples = docs.map(toIExample);
     logger.info('Example items retrieved successfully', {
       count: examples.length,
       page,
@@ -90,18 +101,18 @@ export const getExamples = async (
  * Get example item by ID
  */
 export const getExampleById = async (
-  exampleId: string
+  exampleId: string,
+  db: Db
 ): Promise<IExample | null> => {
   try {
-    const example = await Example.findById(exampleId);
-
+    const collection = db.collection('examples');
+    const example = await collection.findOne({ _id: new ObjectId(exampleId) });
     if (!example) {
       logger.warn('Example item not found', { exampleId });
       return null;
     }
-
     logger.info('Example item retrieved successfully', { exampleId });
-    return example;
+    return toIExample(example);
   } catch (error) {
     logger.error('Error retrieving example item:', error);
     throw error;
@@ -113,22 +124,22 @@ export const getExampleById = async (
  */
 export const updateExample = async (
   exampleId: string,
-  updateData: UpdateExampleData
+  updateData: UpdateExampleData,
+  db: Db
 ): Promise<IExample | null> => {
   try {
-    const example = await Example.findByIdAndUpdate(
-      exampleId,
+    const collection = db.collection('examples');
+    const result = await collection.findOneAndUpdate(
+      { _id: new ObjectId(exampleId) },
       { $set: updateData },
-      { new: true, runValidators: true }
+      { returnDocument: 'after' }
     );
-
-    if (!example) {
+    if (!result || !result.value) {
       logger.warn('Example item not found for update', { exampleId });
       return null;
     }
-
     logger.info('Example item updated successfully', { exampleId });
-    return example;
+    return toIExample(result.value);
   } catch (error) {
     logger.error('Error updating example item:', error);
     throw error;
@@ -138,19 +149,21 @@ export const updateExample = async (
 /**
  * Delete example item (soft delete)
  */
-export const deleteExample = async (exampleId: string): Promise<boolean> => {
+export const deleteExample = async (
+  exampleId: string,
+  db: Db
+): Promise<boolean> => {
   try {
-    const example = await Example.findByIdAndUpdate(
-      exampleId,
-      { isDeleted: true },
-      { new: true }
+    const collection = db.collection('examples');
+    const result = await collection.findOneAndUpdate(
+      { _id: new ObjectId(exampleId) },
+      { $set: { isDeleted: true } },
+      { returnDocument: 'after' }
     );
-
-    if (!example) {
+    if (!result || !result.value) {
       logger.warn('Example item not found for deletion', { exampleId });
       return false;
     }
-
     logger.info('Example item deleted successfully', { exampleId });
     return true;
   } catch (error) {
@@ -163,14 +176,19 @@ export const deleteExample = async (exampleId: string): Promise<boolean> => {
  * Get examples by category
  */
 export const getExamplesByCategory = async (
-  category: string
+  category: string,
+  db: Db
 ): Promise<IExample[]> => {
   try {
-    const examples = await Example.find({
-      'metadata.category': category,
-      isDeleted: false,
-    }).sort({ createdAt: -1 });
-
+    const collection = db.collection('examples');
+    const docs = await collection
+      .find({
+        'metadata.category': category,
+        isDeleted: false,
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
+    const examples = docs.map(toIExample);
     logger.info('Examples retrieved by category', {
       category,
       count: examples.length,
@@ -186,17 +204,22 @@ export const getExamplesByCategory = async (
  * Search examples by name or description
  */
 export const searchExamples = async (
-  searchTerm: string
+  searchTerm: string,
+  db: Db
 ): Promise<IExample[]> => {
   try {
-    const examples = await Example.find({
-      $or: [
-        { name: { $regex: searchTerm, $options: 'i' } },
-        { description: { $regex: searchTerm, $options: 'i' } },
-      ],
-      isDeleted: false,
-    }).sort({ createdAt: -1 });
-
+    const collection = db.collection('examples');
+    const docs = await collection
+      .find({
+        $or: [
+          { name: { $regex: searchTerm, $options: 'i' } },
+          { description: { $regex: searchTerm, $options: 'i' } },
+        ],
+        isDeleted: false,
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
+    const examples = docs.map(toIExample);
     logger.info('Examples searched successfully', {
       searchTerm,
       count: examples.length,

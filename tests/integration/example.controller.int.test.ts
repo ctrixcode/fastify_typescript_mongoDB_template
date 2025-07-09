@@ -1,24 +1,28 @@
 import request from 'supertest';
-import mongoose from 'mongoose';
+import { client, db as sharedDb } from '../setup';
+import { Db } from 'mongodb';
 import app from '../../src/app';
-import Example from '../../src/models/Example';
+
+let db: Db = sharedDb || (global as any).mongoDb;
 
 describe('Example Controller Integration', () => {
   let server: any;
 
   beforeAll(async () => {
+    db = sharedDb || (global as any).mongoDb;
+    await db.collection('examples').deleteMany({});
     // Use the same server as in setup.ts
     // @ts-ignore
     server = global.server || app.listen(0);
   });
 
   afterAll(async () => {
-    await Example.deleteMany({});
+    await db.collection('examples').deleteMany({});
     if (server && server.close) server.close();
   });
 
   afterEach(async () => {
-    await Example.deleteMany({});
+    await db.collection('examples').deleteMany({});
   });
 
   describe('POST /api/examples', () => {
@@ -50,18 +54,20 @@ describe('Example Controller Integration', () => {
 
   describe('GET /api/examples', () => {
     it('should return a list of example items', async () => {
-      await Example.create({
-        name: 'Item 1',
-        description: 'First',
-        price: 10,
-        metadata: { category: 'books' },
-      });
-      await Example.create({
-        name: 'Item 2',
-        description: 'Second',
-        price: 20,
-        metadata: { category: 'electronics' },
-      });
+      await db.collection('examples').insertMany([
+        {
+          name: 'Item 1',
+          description: 'First',
+          price: 10,
+          metadata: { category: 'books' },
+        },
+        {
+          name: 'Item 2',
+          description: 'Second',
+          price: 20,
+          metadata: { category: 'electronics' },
+        },
+      ]);
       const res = await request(server)
         .get('/api/examples')
         .expect(200);

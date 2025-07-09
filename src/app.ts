@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import helmet from '@fastify/helmet';
 import multipart from '@fastify/multipart';
 import fastifyMongo from '@fastify/mongodb';
+import dotenv from 'dotenv';
 import {
   corsPlugin,
   rateLimiterPlugin,
@@ -11,12 +12,14 @@ import {
 } from './middlewares';
 import routes from './routes/index';
 
+dotenv.config();
+
 const app = Fastify({ logger: false });
 
 // Register plugins
 app.register(fastifyMongo, {
   forceClose: true,
-  url: 'mongodb://localhost:27017/fastify_db', // Change DB name as needed
+  url: process.env.MONGO_URL || 'mongodb://localhost:27017/fastify_db',
 });
 app.register(helmet);
 app.register(multipart);

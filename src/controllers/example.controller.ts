@@ -39,7 +39,9 @@ export const createExample = async (
       });
       return;
     }
-    const example = await exampleService.createExample(exampleData);
+    const db = request.server.mongo.db;
+    if (!db) throw new Error('MongoDB not initialized');
+    const example = await exampleService.createExample(exampleData, db);
     reply.status(201).send({
       success: true,
       data: example,
@@ -78,7 +80,10 @@ export const getExamples = async (
       request.query.isDeleted !== undefined
         ? request.query.isDeleted === 'true'
         : undefined;
+    const db = request.server.mongo.db;
+    if (!db) throw new Error('MongoDB not initialized');
     const result = await exampleService.getExamples(
+      db,
       page,
       limit,
       category,
@@ -120,7 +125,9 @@ export const getExampleById = async (
       });
       return;
     }
-    const example = await exampleService.getExampleById(id);
+    const db = request.server.mongo.db;
+    if (!db) throw new Error('MongoDB not initialized');
+    const example = await exampleService.getExampleById(id, db);
     if (!example) {
       reply.status(404).send({
         success: false,
@@ -159,7 +166,9 @@ export const updateExample = async (
       });
       return;
     }
-    const example = await exampleService.updateExample(id, updateData);
+    const db = request.server.mongo.db;
+    if (!db) throw new Error('MongoDB not initialized');
+    const example = await exampleService.updateExample(id, updateData, db);
     if (!example) {
       reply.status(404).send({
         success: false,
@@ -206,8 +215,10 @@ export const deleteExample = async (
       });
       return;
     }
-    const deleted = await exampleService.deleteExample(id);
-    if (!deleted) {
+    const db = request.server.mongo.db;
+    if (!db) throw new Error('MongoDB not initialized');
+    const success = await exampleService.deleteExample(id, db);
+    if (!success) {
       reply.status(404).send({
         success: false,
         message: 'Example item not found',
@@ -237,10 +248,19 @@ export const getExamplesByCategory = async (
 ): Promise<void> => {
   try {
     const { category } = request.params;
-    const result = await exampleService.getExamplesByCategory(category || '');
+    if (!category) {
+      reply.status(400).send({
+        success: false,
+        message: 'Category is required',
+      });
+      return;
+    }
+    const db = request.server.mongo.db;
+    if (!db) throw new Error('MongoDB not initialized');
+    const examples = await exampleService.getExamplesByCategory(category, db);
     reply.status(200).send({
       success: true,
-      data: result,
+      data: examples,
     });
   } catch (error) {
     logger.error('Error in getExamplesByCategory controller:', error);
@@ -261,10 +281,12 @@ export const searchExamples = async (
 ): Promise<void> => {
   try {
     const q = request.query.q || '';
-    const result = await exampleService.searchExamples(q);
+    const db = request.server.mongo.db;
+    if (!db) throw new Error('MongoDB not initialized');
+    const examples = await exampleService.searchExamples(q, db);
     reply.status(200).send({
       success: true,
-      data: result,
+      data: examples,
     });
   } catch (error) {
     logger.error('Error in searchExamples controller:', error);

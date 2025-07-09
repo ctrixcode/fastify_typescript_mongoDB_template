@@ -1,28 +1,43 @@
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
+import { Db, MongoClient } from 'mongodb';
 import app from '../src/app';
 import { IncomingMessage, Server, ServerResponse } from 'http';
 dotenv.config();
-export let server: Server<
-  typeof IncomingMessage,
-  typeof ServerResponse
-> | null = null;
+
+const uri = process.env.MONGO_URL || 'mongodb://localhost:27017/db_name_test';
+let client: MongoClient;
+let db: Db;
+
+export async function globalSetup() {
+  client = new MongoClient(uri);
+  await client.connect();
+  db = client.db();
+  // Attach to global for Jest-style access
+  (global as any).mongoClient = client;
+  (global as any).mongoDb = db;
+}
+
+export async function globalTeardown() {
+  if (client) {
+    await client.db().dropDatabase();
+    await client.close();
+  }
+  (global as any).mongoClient = undefined;
+  (global as any).mongoDb = undefined;
+}
+
+export { client, db };
+
+let server: Server<typeof IncomingMessage, typeof ServerResponse> | null = null;
+
 beforeAll(async () => {
   try {
-    const uri = process.env.MONGODB_URI + '_test';
-    await mongoose.connect(uri, { dbName: 'db_name_test' });
-    server = app.listen(0); // random available port
-  } catch (error) {
-    console.error('Error connecting to MongoDB:', error);
-    throw error;
+    server = app.server;
+  } catch (err) {
+    // ignore
   }
 });
+
 afterAll(async () => {
-  if (mongoose.connection && mongoose.connection.db) {
-    await mongoose.connection.db.dropDatabase();
-  }
-  await mongoose.disconnect();
-  if (server) {
-    server.close();
-  }
+  if (server && server.close) server.close();
 });
