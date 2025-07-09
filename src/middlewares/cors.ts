@@ -15,6 +15,6 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
 
-export default fp(async (fastify) => {
+export default fp(async fastify => {
   await fastify.register(cors, corsOptions);
 });

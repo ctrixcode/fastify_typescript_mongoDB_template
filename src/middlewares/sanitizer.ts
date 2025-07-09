@@ -28,8 +28,8 @@ const sanitizeString = (str: string): string => {
     .trim();
 };
 
-const sanitizerPlugin = fp(async (fastify) => {
-  fastify.addHook('preValidation', async (request) => {
+const sanitizerPlugin = fp(async fastify => {
+  fastify.addHook('preValidation', async request => {
     if (request.body) request.body = sanitizeObject(request.body);
     if (request.query) request.query = sanitizeObject(request.query);
     if (request.params) request.params = sanitizeObject(request.params);

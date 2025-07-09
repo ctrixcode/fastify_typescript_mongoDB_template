@@ -1,7 +1,10 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import * as exampleController from '../controllers/example.controller';
 
-const exampleRoutes = async (fastify: FastifyInstance, opts: FastifyPluginOptions) => {
+const exampleRoutes = async (
+  fastify: FastifyInstance,
+  opts: FastifyPluginOptions
+) => {
   fastify.post('/', exampleController.createExample);
   fastify.get('/', exampleController.getExamples);
   fastify.get('/search', exampleController.searchExamples);

@@ -1,7 +1,10 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import * as exampleService from '../services/example.service';
 import { logger } from '../utils';
-import { CreateExampleData, UpdateExampleData } from '../services/example.service';
+import {
+  CreateExampleData,
+  UpdateExampleData,
+} from '../services/example.service';
 
 interface ExampleParams {
   id?: string;

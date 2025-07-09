@@ -68,12 +68,10 @@ describe('Example Controller Integration', () => {
           metadata: { category: 'electronics' },
         },
       ]);
-      const res = await request(server)
-        .get('/api/examples')
-        .expect(200);
+      const res = await request(server).get('/api/examples').expect(200);
       expect(res.body.success).toBe(true);
       expect(Array.isArray(res.body.data)).toBe(true);
       expect(res.body.data.length).toBeGreaterThanOrEqual(2);
     });
   });
-}); 
+});
